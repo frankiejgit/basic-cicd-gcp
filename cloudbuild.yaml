@@ -1,0 +1,23 @@
+steps:
+  # 1. Build the Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-flask-app:$SHORT_SHA', '.']
+
+  # 2. Push the Image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-flask-app:$SHORT_SHA']
+
+  # 3. Create a Release in Cloud Deploy (Hands off to CD)
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'deploy'
+      - 'releases'
+      - 'create'
+      - 'release-$SHORT_SHA'
+      - '--delivery-pipeline=demo-app-pipeline'
+      - '--region=${_REGION}'
+      - '--images=basic-flask-app=${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-flask-app:$SHORT_SHA'
+
+substitutions:
+  _REGION: us-central1

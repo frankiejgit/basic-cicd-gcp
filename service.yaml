@@ -1,0 +1,9 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: basic-flask-app
+spec:
+  template:
+    spec:
+      containers:
+      - image: basic-flask-app:latest # This is a placeholder that Cloud Deploy will overwrite
