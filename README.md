@@ -6,32 +6,14 @@ It demonstrates deploying a Python (Flask) application from GitHub to Cloud Run,
 
 ## Architecture
 
-```text
-[ Developer ]
-     │ (git push)
-     ▼
-[ GitHub Repo ] ──(Developer Connect)──┐
-                                       │
-                                       ▼
-                              [ Cloud Build (CI) ] (Executes cloudbuild.yaml via Custom SA)
-                                       │
-                                   (Build & Push)
-                                       │
-                                       ▼
-[ Artifact Registry ] ◄────── [ Cloud Deploy (CD) ] (Manages the release pipeline)
-                                       │
-                    ┌──────────────────┴──────────────────┐
-                    ▼                                     ▼
-           [ Cloud Run (Dev) ]                 [ Cloud Run (Prod) ]
-             (us-central1)                         (us-east1)
-         * Deploys automatically              * Pauses for Manual Approval
-```
+![Architecture Diagram](./images/cicd-architecture-diagram.png)
+
+---
 
 ### Enterprise Best Practices Implemented
 * **Separation of CI and CD:** Cloud Build strictly handles CI (building and pushing the immutable image). Cloud Deploy handles CD (promoting that exact same image across environments).
 * **Developer Connect:** Uses Google's latest recommended V2 API to securely connect GitHub to Google Cloud.
 * **Least Privilege Security:** Both Cloud Build and Cloud Deploy execute using a custom Service Account, rather than Google's over-permissive default compute accounts.
-* **Modern Python Layout:** Uses the `src/` directory layout to prevent module shadowing.
 
 ---
 
