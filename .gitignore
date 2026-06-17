@@ -10,6 +10,3 @@ wheels/
 .venv
 
 .env
-
-# FOR NOW
-README.md
