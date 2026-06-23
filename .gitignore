@@ -12,3 +12,5 @@ wheels/
 
 # Project-Specific
 .env
+*-v2.yaml
+.agents/
