@@ -1,8 +1,8 @@
 # Enterprise CI/CD on Google Cloud (Demo)
 
-This repository contains the source code, templates and instructions to demo a fully serverless, enterprise-grade CI/CD pipeline on Google Cloud. 
+This repository contains the source code, templates, and instructions to demo a fully serverless, enterprise-grade CI/CD pipeline on Google Cloud.
 
-It demonstrates deploying a basic Flask (Python) application from GitHub to Cloud Run, separating Continuous Integration (CI) from Continuous Delivery (CD), using least-privilege security, and implementing a manual approval step for production releases.
+It demonstrates deploying a FastAPI (Python) application from GitHub to Cloud Run. It covers the full software delivery lifecycle: automated testing, container security scanning, binary authorization, deployment verification, and progressive (canary) delivery to production.
 
 ## Architecture
 
@@ -11,24 +11,28 @@ It demonstrates deploying a basic Flask (Python) application from GitHub to Clou
 ---
 
 ### Best Practices Implemented
-* **Separation of CI and CD:** Cloud Build strictly handles CI (building and pushing the image to Artifact Registry) while Cloud Deploy handles CD (promoting that image across environments).
-* **Automated Testing & Linting:** Code is validated via `pytest` and linted with `ruff` prior to image build.
-* **Vulnerability Scanning:** Container images are scanned for critical vulnerabilities before being promoted to CD.
-* **Developer Connect:** Uses Google's latest recommended V2 API to securely connect GitHub to Google Cloud.
-* **Least Privilege Security:** Both Cloud Build and Cloud Deploy execute using a custom Service Account, rather than Google's default compute account.
-* **Supply Chain Security:** Binary Authorization acts as a last line of defense for untrusted images, ensuring Cloud Run will only execute container images that meet the criteria to be deployed. In this demo, the Binary Authorization policy limits deployes to images built by the CI pipeline and stored in the approved Artifact Registry.
+* **Separation of CI and CD:** Cloud Build handles CI (lint, test, build, scan) while Cloud Deploy handles CD (verify, promote, approve).
+* **Automated Testing & Linting:** Code is validated with `pytest` and linted with `ruff` *before* a container is ever built.
+* **Container Vulnerability Scanning:** Images are scanned with On-Demand Scanning immediately after pushing to Artifact Registry.
+* **Deployment Verification:** After each deployment to Dev and Prod, Cloud Deploy automatically runs a live health check against the running service endpoint before marking the deployment stable.
+* **Canary Deployments (Prod):** Production rollouts use a canary strategy (10% → 50% → 100%), allowing safe progressive traffic shifting with health verification at each phase.
+* **Human-in-the-Loop (Prod Approval):** A manual approval gate in Cloud Deploy ensures no code reaches production without an authorized sign-off.
+* **Developer Connect:** Uses Google's V2 API to securely connect GitHub to Google Cloud.
+* **Least Privilege Security:** Cloud Build and Cloud Deploy execute using a custom Service Account with only the roles they need.
+* **Supply Chain Security (Binary Authorization):** Cloud Run enforces a policy that only permits images built by this CI pipeline stored in the approved Artifact Registry.
 
 ---
 
 ## Repository Structure
 
-* `src/main.py` - The Python Flask web application.
-* `Dockerfile` - Simple container configuration using `gunicorn`.
-* `cloudbuild.yaml` - Declarative pipeline configuration for Google Cloud Build.
-* `service.yaml` - The Cloud Run Knative manifest.
-* `skaffold.yaml` - Tells Cloud Deploy how to render and deploy `service.yaml`.
-* `clouddeploy.yaml` - Infrastructure-as-code file defining the Dev and Prod pipeline stages.
-* `binauthz-policy.yaml` - The list of attestations used by Binary Authorization to approve or reject deployments.
+* `src/main.py` - The FastAPI web application with `/` and `/health` endpoints.
+* `tests/test_main.py` - Unit tests for the application endpoints.
+* `Dockerfile` - Container configuration running `uvicorn`.
+* `cloudbuild.yaml` - Cloud Build CI pipeline: lint → test → build → push → scan → create release.
+* `service.yaml` - The Cloud Run Knative service manifest.
+* `skaffold.yaml` - Tells Cloud Deploy how to render, deploy, and **verify** `service.yaml`.
+* `clouddeploy.yaml` - Defines the delivery pipeline with Dev (verify) and Prod (canary + approval) stages.
+* `binauthz-policy.yaml` - Binary Authorization policy allowing only images from Artifact Registry.
 
 ---
 
@@ -84,6 +88,17 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
 gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="roles/iam.serviceAccountUser"
+
+# Grant On-Demand Scanning permissions (Required for Vulnerability Scan)
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/ondemandscanning.admin"
+
+# Grant Cloud Run Invoker permissions (Required for Cloud Deploy Verification)
+# The verification job calls your live Cloud Run service URL to confirm it's healthy.
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/run.invoker"
 
 # Grant Logging and Storage permissions (Required by Cloud Build and Cloud Deploy)
 gcloud projects add-iam-policy-binding $PROJECT_ID \
@@ -158,19 +173,28 @@ spec:
 
 ## Running the Demo
 
-### Part 1: The CI/CD Pipeline
-1. **Trigger a deployment:** Make a change to `src/main.py` (e.g., update the version number), commit, and push to the `main` branch.
-2. **Watch the CI phase:** Open **Cloud Build > History** in the GCP console. You will see the container being built, pushed to Artifact Registry, and handed off to Cloud Deploy.
-3. **Watch the CD phase:** Open **Cloud Deploy** in the console. Click `demo-app-pipeline`.
-   * You will see the `dev-env` automatically deploy.
-   * Verify your Dev app is live by visiting it in **Cloud Run** (`us-central1`).
-4. **The Human-in-the-Loop:** Notice the pipeline is paused at `prod-env` with a **Review** button. 
-5. **Promote to Prod:** Click **Review**, then **Approve**. Cloud Deploy will securely roll the exact same immutable container into your production region (`us-east1`).
+### Part 1: The CI Phase (Cloud Build)
+1. **Trigger a deployment:** Make a visible change to `src/main.py` (e.g., update the version string), commit, and push to the `main` branch.
+2. **Watch the CI phase:** Open **Cloud Build > History** in the GCP console. Observe each step executing in sequence:
+   * **Lint:** `ruff` validates code style.
+   * **Test:** `pytest` runs unit tests against the application.
+   * **Build & Push:** Docker image built and pushed to Artifact Registry.
+   * **VulnerabilityScan:** Image scanned for known CVEs.
+   * **Deploy:** A new Cloud Deploy release is created.
 
-### Part 2: Supply Chain Security (Binary Authorization)
-To demonstrate the zero-trust architecture, attempt to bypass the CI/CD pipeline by deploying an unauthorized, public container image (like `nginx` from Docker Hub) directly to Cloud Run.
+### Part 2: The CD Phase (Cloud Deploy)
+3. **Open Cloud Deploy** in the console and click `demo-app-pipeline`. Watch the `dev-env` stage:
+   * The service deploys to Cloud Run.
+   * Cloud Deploy automatically runs the **Verification** job — a live `curl` against your `/health` endpoint. If it returns 200 OK, the deployment is marked stable.
+4. **The Human-in-the-Loop:** Notice the pipeline is paused at `prod-env` with a **Review** button.
+5. **Approve the Canary:** Click **Review**, then **Approve**. Cloud Deploy uses the **Canary strategy**:
+   * **10% of traffic** is routed to the new version. Verification runs at 10%.
+   * Promote to **50%**, verification runs again.
+   * Promote to **stable (100%)** — rollout complete!
 
-Run this command in your terminal:
+### Part 3: Supply Chain Security (Binary Authorization)
+Demonstrate zero-trust by attempting to bypass the pipeline and deploy an unauthorized image directly:
+
 ```bash
 gcloud run deploy rogue-app \
     --image=nginx:latest \
@@ -179,5 +203,7 @@ gcloud run deploy rogue-app \
     --allow-unauthenticated
 ```
 
-**The Result:** The deployment will immediately fail, proving that it is impossible to run code that has not passed through your secure CI process. You will see this error:
+**The Result:** The deployment fails immediately:
 > `Deny by default admission rule. Image nginx:latest is not allowed by the policy.`
+
+This proves only images that have passed through your secure CI pipeline can run in your environment.

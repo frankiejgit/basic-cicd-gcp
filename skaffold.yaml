@@ -5,3 +5,31 @@ manifests:
     - service.yaml
 deploy:
   cloudrun: {}
+verify:
+  - name: verify-health-check
+    container:
+      name: verify-health-check
+      image: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+      command: ["/bin/bash"]
+      args:
+        - "-c"
+        - |
+          set -e
+          # Cloud Deploy injects CLOUD_RUN_SERVICE_URLS as a comma-separated list.
+          # We take the first URL and hit the /health endpoint.
+          SERVICE_URL=$(echo "$CLOUD_RUN_SERVICE_URLS" | cut -d',' -f1)
+          echo "Verifying deployment at: ${SERVICE_URL}/health"
+          
+          # Retry a few times in case the service needs a moment to warm up
+          for i in {1..5}; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${SERVICE_URL}/health")
+            echo "Attempt $i: HTTP status = $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "Verification PASSED! Service is healthy."
+              exit 0
+            fi
+            sleep 5
+          done
+          
+          echo "Verification FAILED! Service did not return 200 OK after 5 attempts."
+          exit 1
