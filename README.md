@@ -12,6 +12,8 @@ It demonstrates deploying a basic Flask (Python) application from GitHub to Clou
 
 ### Best Practices Implemented
 * **Separation of CI and CD:** Cloud Build strictly handles CI (building and pushing the image to Artifact Registry) while Cloud Deploy handles CD (promoting that image across environments).
+* **Automated Testing & Linting:** Code is validated via `pytest` and linted with `ruff` prior to image build.
+* **Vulnerability Scanning:** Container images are scanned for critical vulnerabilities before being promoted to CD.
 * **Developer Connect:** Uses Google's latest recommended V2 API to securely connect GitHub to Google Cloud.
 * **Least Privilege Security:** Both Cloud Build and Cloud Deploy execute using a custom Service Account, rather than Google's default compute account.
 * **Supply Chain Security:** Binary Authorization acts as a last line of defense for untrusted images, ensuring Cloud Run will only execute container images that meet the criteria to be deployed. In this demo, the Binary Authorization policy limits deployes to images built by the CI pipeline and stored in the approved Artifact Registry.
@@ -52,7 +54,8 @@ gcloud services enable \
     clouddeploy.googleapis.com \
     developerconnect.googleapis.com \
     secretmanager.googleapis.com \
-    binaryauthorization.googleapis.com
+    binaryauthorization.googleapis.com \
+    ondemandscanning.googleapis.com
 ```
 
 ### 3. Create Custom Service Account & Grant Permissions
