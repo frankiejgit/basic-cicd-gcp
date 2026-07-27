@@ -14,3 +14,6 @@ wheels/
 .env
 *-v2.yaml
 .agents/
+.pytest_cache/
+.ruff_cache/
+.scratch/

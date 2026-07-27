@@ -31,9 +31,9 @@ executionConfigs:
   - RENDER
   - DEPLOY
   - VERIFY
-  serviceAccount: cicd-pipeline-sa@cicd-devops-demos.iam.gserviceaccount.com
+  serviceAccount: cicd-pipeline-sa@${PROJECT_ID}.iam.gserviceaccount.com
 run:
-  location: projects/cicd-devops-demos/locations/us-central1
+  location: projects/${PROJECT_ID}/locations/us-central1
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
@@ -45,6 +45,6 @@ executionConfigs:
   - RENDER
   - DEPLOY
   - VERIFY
-  serviceAccount: cicd-pipeline-sa@cicd-devops-demos.iam.gserviceaccount.com
+  serviceAccount: cicd-pipeline-sa@${PROJECT_ID}.iam.gserviceaccount.com
 run:
-  location: projects/cicd-devops-demos/locations/us-east1
+  location: projects/${PROJECT_ID}/locations/us-east1

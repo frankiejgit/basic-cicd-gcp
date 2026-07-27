@@ -1,0 +1,14 @@
+.git
+.gitignore
+.venv
+.env
+.pytest_cache
+.ruff_cache
+.scratch
+.agents
+tests/
+verify/
+images/
+README.md
+pyproject.toml
+uv.lock

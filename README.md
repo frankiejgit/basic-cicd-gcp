@@ -119,10 +119,10 @@ gcloud artifacts repositories create demo-repo \
 
 ### 5. Apply Cloud Deploy Pipeline Configuration
 This creates the logical pipeline connecting the Dev and Prod environments. 
-*(Ensure you have updated the `clouddeploy.yaml` with your correct `$PROJECT_ID` and `$SA_EMAIL` if applying manually).*
+Substitutes `$PROJECT_ID` into `clouddeploy.yaml` and applies the pipeline configuration:
 
 ```bash
-gcloud deploy apply --file=clouddeploy.yaml --region=$DEV_REGION
+envsubst < clouddeploy.yaml | gcloud deploy apply --file=- --region=$DEV_REGION
 ```
 
 ### 6. Connect GitHub to Google Cloud

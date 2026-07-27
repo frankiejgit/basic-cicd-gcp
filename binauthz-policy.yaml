@@ -2,4 +2,4 @@ defaultAdmissionRule:
   evaluationMode: ALWAYS_DENY 
   enforcementMode: ENFORCED_BLOCK_AND_AUDIT_LOG 
 admissionWhitelistPatterns: 
-- namePattern: "us-central1-docker.pkg.dev/cicd-devops-demos/demo-repo/*" 
+- namePattern: "us-central1-docker.pkg.dev/${PROJECT_ID}/demo-repo/*" 

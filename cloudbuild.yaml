@@ -21,14 +21,16 @@ steps:
         pytest tests/
 
   # 3. Build the Image
-  - name: 'gcr.io/cloud-builders/docker'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Build'
-    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-flask-app:$SHORT_SHA', '.']
+    entrypoint: 'docker'
+    args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-fastapi-app:$SHORT_SHA', '.']
 
   # 4. Push the Image
-  - name: 'gcr.io/cloud-builders/docker'
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Push'
-    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-flask-app:$SHORT_SHA']
+    entrypoint: 'docker'
+    args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-fastapi-app:$SHORT_SHA']
 
   # 5. Scan for Vulnerabilities in the image
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -38,7 +40,7 @@ steps:
       - '-c'
       - |
         set -e
-        image='${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-flask-app:$SHORT_SHA'
+        image='${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-fastapi-app:$SHORT_SHA'
         echo "Scanning image: $image"
         
         # Start the scan and capture the SCAN id
@@ -46,7 +48,8 @@ steps:
           --format='value(response.scan)' \
           --remote)
         
-        echo "Scan completed."
+        echo "Scan requested: $scan_name"
+        gcloud artifacts docker images list-vulnerabilities "$scan_name" --format="table(vulnerability.effectiveSeverity,vulnerability.packageIssue[0].affectedPackage)" || true
 
   # 6. Create a Release in Cloud Deploy (Hands off to CD)
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
@@ -59,7 +62,7 @@ steps:
       - 'release-$SHORT_SHA'
       - '--delivery-pipeline=demo-app-pipeline'
       - '--region=${_REGION}'
-      - '--images=basic-flask-app=${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-flask-app:$SHORT_SHA'
+      - '--images=basic-fastapi-app=${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-fastapi-app:$SHORT_SHA'
 
 substitutions:
   _REGION: us-central1

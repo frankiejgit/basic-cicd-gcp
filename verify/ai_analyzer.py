@@ -1,4 +1,3 @@
-import os
 from google import genai
 
 print("Fetching recent logs and error rates for the 10% Canary Revision...")
