@@ -1,8 +1,7 @@
 import os
-
+import uvicorn
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-import uvicorn
 
 app = FastAPI()
 
