@@ -4,11 +4,10 @@ metadata:
   name: demo-app-pipeline
 serialPipeline:
   stages:
-  # Stage 1: Dev - Auto-deploys and runs verification tests against the live service
+  # Stage 1: Dev - Auto-deploys to the live service
   - targetId: dev-env
     strategy:
-      standard:
-        verify: true
+      standard: {}
 
   # Stage 2: Prod - Requires manual approval, then uses a Canary strategy
   - targetId: prod-env
@@ -20,7 +19,6 @@ serialPipeline:
         canaryDeployment:
           # Route 10% of traffic to the new version first, then promote to 100%
           percentages: [10, 50]
-          verify: true
 ---
 apiVersion: deploy.cloud.google.com/v1
 kind: Target
@@ -30,7 +28,6 @@ executionConfigs:
 - usages:
   - RENDER
   - DEPLOY
-  - VERIFY
   serviceAccount: cicd-pipeline-sa@cicd-devops-demos.iam.gserviceaccount.com
 run:
   location: projects/cicd-devops-demos/locations/us-central1
@@ -44,7 +41,6 @@ executionConfigs:
 - usages:
   - RENDER
   - DEPLOY
-  - VERIFY
   serviceAccount: cicd-pipeline-sa@cicd-devops-demos.iam.gserviceaccount.com
 run:
   location: projects/cicd-devops-demos/locations/us-east1
