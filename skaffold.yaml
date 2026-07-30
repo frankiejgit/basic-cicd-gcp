@@ -20,9 +20,16 @@ verify:
           SERVICE_URL=$(echo "$CLOUD_RUN_SERVICE_URLS" | cut -d',' -f1)
           echo "Verifying deployment at: ${SERVICE_URL}/health"
           
+          # Get Identity Token for Cloud Run authentication
+          TOKEN=$(gcloud auth print-identity-token --audience="${SERVICE_URL}" 2>/dev/null || gcloud auth print-identity-token 2>/dev/null || echo "")
+
           # Retry a few times in case the service needs a moment to warm up
           for i in {1..5}; do
-            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${SERVICE_URL}/health")
+            if [ -n "$TOKEN" ]; then
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${TOKEN}" "${SERVICE_URL}/health")
+            else
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${SERVICE_URL}/health")
+            fi
             echo "Attempt $i: HTTP status = $STATUS"
             if [ "$STATUS" = "200" ]; then
               echo "Verification PASSED! Service is healthy."
