@@ -21,15 +21,13 @@ steps:
         pytest tests/
 
   # 3. Build the Image
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/cloud-builders/docker'
     id: 'Build'
-    entrypoint: 'docker'
     args: ['build', '-t', '${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-fastapi-app:$SHORT_SHA', '.']
 
   # 4. Push the Image
-  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+  - name: 'gcr.io/cloud-builders/docker'
     id: 'Push'
-    entrypoint: 'docker'
     args: ['push', '${_REGION}-docker.pkg.dev/$PROJECT_ID/demo-repo/basic-fastapi-app:$SHORT_SHA']
 
   # 5. Scan for Vulnerabilities in the image
