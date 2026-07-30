@@ -94,11 +94,14 @@ gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="roles/ondemandscanning.admin"
 
-# Grant Cloud Run Invoker permissions (Required for Cloud Deploy Verification)
+# Grant Cloud Run Invoker & Token Creator permissions (Required for Cloud Deploy Verification)
 # The verification job calls your live Cloud Run service URL to confirm it's healthy.
 gcloud projects add-iam-policy-binding $PROJECT_ID \
     --member="serviceAccount:${SA_EMAIL}" \
     --role="roles/run.invoker"
+gcloud projects add-iam-policy-binding $PROJECT_ID \
+    --member="serviceAccount:${SA_EMAIL}" \
+    --role="roles/iam.serviceAccountTokenCreator"
 
 # Grant Logging and Storage permissions (Required by Cloud Build and Cloud Deploy)
 gcloud projects add-iam-policy-binding $PROJECT_ID \
