@@ -25,9 +25,15 @@ verify:
           echo "  Audience: $BASE_URL"
 
           # 2. Retrieve OIDC Identity Token for private Cloud Run authentication
-          TOKEN=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${BASE_URL}" 2>/dev/null)
-          if [ -z "$TOKEN" ] || [ "${#TOKEN}" -lt 50 ]; then
+          TOKEN=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${BASE_URL}" 2>/dev/null || true)
+          if [[ "$TOKEN" != eyJ* ]]; then
+            echo "Metadata server token lookup returned non-JWT output. Trying gcloud auth print-identity-token..."
             TOKEN=$(gcloud auth print-identity-token --audiences="${BASE_URL}" 2>/dev/null || true)
+          fi
+
+          if [[ "$TOKEN" != eyJ* ]]; then
+            echo "ERROR: Could not retrieve a valid JWT identity token starting with 'eyJ'."
+            exit 1
           fi
 
           # 3. Poll the endpoint using the Bearer token
