@@ -5,3 +5,40 @@ manifests:
     - service.yaml
 deploy:
   cloudrun: {}
+verify:
+  - name: verify-health-check
+    container:
+      name: verify-health-check
+      image: gcr.io/google.com/cloudsdktool/cloud-sdk:slim
+      command: ["/bin/bash"]
+      args:
+        - "-c"
+        - |
+          set -e
+          # Extract service URL (stripping trailing slash if present)
+          SERVICE_URL=$(echo "$CLOUD_RUN_SERVICE_URLS" | cut -d',' -f1 | sed 's|/$||')
+          echo "Verifying deployment at: ${SERVICE_URL}/health"
+          
+          # Fetch GCP OIDC identity token directly from the Instance Metadata Server
+          TOKEN=$(curl -s -H "Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/identity?audience=${SERVICE_URL}")
+          if [ -z "$TOKEN" ]; then
+            TOKEN=$(gcloud auth print-identity-token --audience="${SERVICE_URL}" 2>/dev/null || true)
+          fi
+
+          # Poll endpoint up to 5 times
+          for i in {1..5}; do
+            if [ -n "$TOKEN" ]; then
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer ${TOKEN}" "${SERVICE_URL}/health")
+            else
+              STATUS=$(curl -s -o /dev/null -w "%{http_code}" "${SERVICE_URL}/health")
+            fi
+            echo "Attempt $i: HTTP status = $STATUS"
+            if [ "$STATUS" = "200" ]; then
+              echo "Verification PASSED! Service is healthy."
+              exit 0
+            fi
+            sleep 5
+          done
+          
+          echo "Verification FAILED! Service did not return 200 OK after 5 attempts."
+          exit 1
