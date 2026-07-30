@@ -57,7 +57,7 @@ def hello_world():
     <body>
         <div class="container">
             <h1>Welcome to the Enterprise Demo</h1>
-            <p>Version 3.0</p>
+            <p>Version 2.0</p>
         </div>
     </body>
     </html>
